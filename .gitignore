@@ -9,6 +9,18 @@ venv/
 env/
 ENV/
 
+# Flask specific instance folder
+instance/
+
+# Testing & Coverage (for Phase 6 testing)
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Local database storage (if binding Docker volume to a local folder)
+pgdata/
+postgres_data/
+
 # Secrets and Environment Variables (NEVER push credentials)
 .env
 .env.local
