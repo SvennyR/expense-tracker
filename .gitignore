@@ -1,0 +1,31 @@
+# Byte-compiled / optimized Python files (Cache)
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Python Virtual Environment
+venv/
+.venv/
+env/
+ENV/
+
+# Secrets and Environment Variables (NEVER push credentials)
+.env
+.env.local
+.env.*.local
+*.pem
+
+# Database (Local SQLite files if used during development)
+*.db
+*.sqlite3
+*.sqlite
+
+# IDE & OS-Specific Files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
