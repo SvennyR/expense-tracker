@@ -21,11 +21,12 @@ htmlcov/
 pgdata/
 postgres_data/
 
-# Secrets and Environment Variables (NEVER push credentials)
+# Secrets and Environment Variables 
 .env
 .env.local
 .env.*.local
 *.pem
+keys.env
 
 # Database (Local SQLite files if used during development)
 *.db
@@ -38,6 +39,17 @@ postgres_data/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Node.js & React / Vite
+node_modules/
+dist/
+dist-zip/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.eslintcache
+.vite/
 
 # Logs
 *.log

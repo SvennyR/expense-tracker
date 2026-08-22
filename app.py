@@ -1,13 +1,22 @@
+import os
+from dotenv import load_dotenv
 from flask import Flask, request, jsonify
 from models import db, User, Category, Transaction
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 from werkzeug.security import generate_password_hash, check_password_hash
+from flask_cors import CORS
+from flask_wtf.csrf import CSRFProtect
 
+load_dotenv('keys.env')  # Load environment variables .env file
 app = Flask(__name__)
+CORS(app, resources={r"/*": {"origins": "http://localhost:5173"}})  #restricting CORS from frontend
+csrf = CSRFProtect(app)
 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://devuser:devpassword@localhost:5432/expense_tracker'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['JWT_SECRET_KEY'] = 'super-secret-key'  # Change this later
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY')
+app.config['JWT_SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY')
+DEBUG_MODE = os.environ.get('FLASK_DEBUG', 'False').lower() in ('true', '1', 't')
 jwt = JWTManager(app)
 
 db.init_app(app)
@@ -103,25 +112,28 @@ def get_summary():
 # --- Auth Routes ---
 
 @app.route('/register', methods=['POST'])
+@csrf.exempt #can be exempt since i use JWT headers for auth
 def register():
-    data = request.get_json() or {} 
-    if not data.get('email') or not data.get('password'):
-        return jsonify({'error': 'Email and password are required'}), 400
+    data = request.get_json() or {}
+    if not data.get('username') or not data.get('password'):
+        return jsonify({'error': 'Username and password are required'}), 400
 
-    if User.query.filter_by(email=data['email']).first():
+    if User.query.filter_by(username=data['username']).first():
         return jsonify({'error': 'User already exists'}), 400
 
     hashed_pw = generate_password_hash(data['password'])
-    new_user = User(email=data['email'], password_hash=hashed_pw)
+    new_user = User(username=data['username'], password_hash=hashed_pw)
 
     db.session.add(new_user)
     db.session.commit()
     return jsonify({'message': 'User registered successfully', 'user_id': new_user.id}), 201
 
+
 @app.route('/login', methods=['POST'])
+@csrf.exempt  #can be exempt since i use JWT headers for auth
 def login():
     data = request.get_json() or {}
-    user = User.query.filter_by(email=data.get('email')).first()
+    user = User.query.filter_by(username=data.get('username')).first()
 
     if not user or not check_password_hash(user.password_hash, data.get('password', '')):
         return jsonify({'error': 'Invalid credentials'}), 401
@@ -129,7 +141,6 @@ def login():
     access_token = create_access_token(identity=str(user.id))
     return jsonify({'access_token': access_token}), 200
 
-
 # ALWAYS LEAVE THIS AT THE VERY BOTTOM
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=DEBUG_MODE)
