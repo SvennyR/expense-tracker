@@ -1,10 +1,14 @@
 from flask import Flask, request, jsonify
 from models import db, User, Category, Transaction
+from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
+from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://devuser:devpassword@localhost:5432/expense_tracker'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['JWT_SECRET_KEY'] = 'super-secret-key'  # Change this later
+jwt = JWTManager(app)
 
 db.init_app(app)
 
@@ -29,8 +33,11 @@ def add_category():
 # --- Transaction Routes ---
 
 @app.route('/transactions', methods=['GET'])
+@jwt_required()
 def get_transactions():
-    transactions = Transaction.query.all()
+    current_user_id = get_jwt_identity()
+    # Only fetch transactions belonging to the logged in user
+    transactions = Transaction.query.filter_by(user_id=int(current_user_id)).all()
     output = []
     for t in transactions:
         output.append({
@@ -44,15 +51,19 @@ def get_transactions():
         })
     return jsonify(output), 200
 
+
 @app.route('/transactions', methods=['POST'])
+@jwt_required()
 def add_transaction():
-    data = request.get_json()
-    required = ['user_id', 'category_id', 'amount', 'type', 'date']
+    current_user_id = get_jwt_identity()
+    data = request.get_json() or {}
+    
+    required = ['category_id', 'amount', 'type', 'date']
     if not all(field in data for field in required):
         return jsonify({'error': f'Missing required fields: {required}'}), 400
 
     new_tx = Transaction(
-        user_id=data['user_id'],
+        user_id=int(current_user_id), # Automatically assign logged in user ID
         category_id=data['category_id'],
         amount=data['amount'],
         type=data['type'],
@@ -63,45 +74,19 @@ def add_transaction():
     db.session.commit()
     return jsonify({'message': 'Transaction created', 'id': new_tx.id}), 201
 
-@app.route('/transactions/<int:tx_id>', methods=['PUT'])
-def update_transaction(tx_id):
-    tx = Transaction.query.get_or_404(tx_id)
-    data = request.get_json() or {}
 
-    tx.amount = data.get('amount', tx.amount)
-    tx.type = data.get('type', tx.type)
-    tx.category_id = data.get('category_id', tx.category_id)
-    tx.date = data.get('date', tx.date)
-    tx.description = data.get('description', tx.description)
-
-    db.session.commit()
-    return jsonify({'message': f'Transaction {tx.id} updated successfully'}), 200
-
-@app.route('/transactions/<int:tx_id>', methods=['DELETE'])
-def delete_transaction(tx_id):
-    tx = Transaction.query.get_or_404(tx_id)
-    db.session.delete(tx)
-    db.session.commit()
-    return jsonify({'message': f'Transaction {tx_id} deleted successfully'}), 200
-
-# --- Summary & Analytics Route ---
+# --- Summary Route ---
 
 @app.route('/summary', methods=['GET'])
+@jwt_required()
 def get_summary():
-    user_id = request.args.get('user_id', type=int)
-    
-    query = Transaction.query
-    if user_id:
-        query = query.filter_by(user_id=user_id)
-    
-    transactions = query.all()
+    current_user_id = get_jwt_identity()
+    transactions = Transaction.query.filter_by(user_id=int(current_user_id)).all()
 
-    # Convert t.amount to float before summing
     total_income = sum(float(t.amount) for t in transactions if t.type == 'INCOME')
     total_expense = sum(float(t.amount) for t in transactions if t.type == 'EXPENSE')
     net_balance = total_income - total_expense
 
-    # Safely accumulate category totals using float addition
     category_breakdown = {}
     for t in transactions:
         cat = Category.query.get(t.category_id)
@@ -114,6 +99,36 @@ def get_summary():
         'net_balance': round(net_balance, 2),
         'category_breakdown': category_breakdown
     }), 200
+
+# --- Auth Routes ---
+
+@app.route('/register', methods=['POST'])
+def register():
+    data = request.get_json() or {} 
+    if not data.get('email') or not data.get('password'):
+        return jsonify({'error': 'Email and password are required'}), 400
+
+    if User.query.filter_by(email=data['email']).first():
+        return jsonify({'error': 'User already exists'}), 400
+
+    hashed_pw = generate_password_hash(data['password'])
+    new_user = User(email=data['email'], password_hash=hashed_pw)
+
+    db.session.add(new_user)
+    db.session.commit()
+    return jsonify({'message': 'User registered successfully', 'user_id': new_user.id}), 201
+
+@app.route('/login', methods=['POST'])
+def login():
+    data = request.get_json() or {}
+    user = User.query.filter_by(email=data.get('email')).first()
+
+    if not user or not check_password_hash(user.password_hash, data.get('password', '')):
+        return jsonify({'error': 'Invalid credentials'}), 401
+
+    access_token = create_access_token(identity=str(user.id))
+    return jsonify({'access_token': access_token}), 200
+
 
 # ALWAYS LEAVE THIS AT THE VERY BOTTOM
 if __name__ == '__main__':
