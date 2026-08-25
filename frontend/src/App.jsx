@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import API from './api';
+import ExpenseChart from './ExpenseChart';
 
 export default function App() {
   const [token, setToken] = useState(localStorage.getItem('token') || '');
@@ -12,12 +13,18 @@ export default function App() {
   // Form state for new transaction
   const [amount, setAmount] = useState('');
   const [type, setType] = useState('EXPENSE');
-  const [categoryId, setCategoryId] = useState('1');
+  const [categoryId, setCategoryId] = useState('1'); // Default category ID
+  const [categories, setCategories] = useState([]);
   const [description, setDescription] = useState('');
+  const [transactions, setTransactions] = useState([]);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [isCreatingCategory, setIsCreatingCategory] = useState(false);
 
   useEffect(() => {
     if (token) {
       fetchSummary();
+      fetchTransactions();
+      fetchCategories();
     }
   }, [token]);
 
@@ -50,6 +57,49 @@ export default function App() {
     }
   };
 
+  const fetchTransactions = async () => {
+    try {
+      const res = await API.get('/transactions');
+      setTransactions(res.data);
+    } catch (err) {
+      if (err.response?.status === 401) handleLogout();
+    }
+  };
+  const fetchCategories = async () => {
+  try {
+    const res = await API.get('/categories');
+    setCategories(res.data);
+    if (res.data.length > 0) {
+      setCategoryId(res.data[0].id.toString());
+    }
+  } catch (err) {
+    console.error('Failed to load categories', err);
+  }
+};
+
+  const handleCategorySelect = (e) => {
+  const value = e.target.value;
+  if (value === 'NEW') {
+    setIsCreatingCategory(true);
+  } else {
+    setIsCreatingCategory(false);
+    setCategoryId(value);
+  }
+};
+
+const handleCreateCategory = async () => {
+  if (!newCategoryName.trim()) return;
+  try {
+    const res = await API.post('/categories', { name: newCategoryName });
+    setCategories([...categories, res.data]); // Update dropdown list
+    setCategoryId(res.data.id.toString());    // Auto-select new category
+    setNewCategoryName('');
+    setIsCreatingCategory(false);
+  } catch (err) {
+    alert(err.response?.data?.error || 'Failed to add category');
+  }
+};
+
   const handleAddTransaction = async (e) => {
     e.preventDefault();
     try {
@@ -63,8 +113,22 @@ export default function App() {
       setDescription('');
       setAmount('');
       fetchSummary();
+      fetchTransactions();
     } catch (err) {
       alert(err.response?.data?.error || 'Failed to add transaction');
+    }
+  };
+
+  const handleDeleteTransaction = async (Id) => {
+    if (!window.confirm('Are you sure you want to delete this transaction?')) return;
+
+    try {
+      await API.delete(`/transactions/${Id}`);
+      // Refresh the summary and transactions after deletion
+      fetchSummary();
+      fetchTransactions();
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to delete transaction');
     }
   };
 
@@ -93,10 +157,10 @@ export default function App() {
           onChange={(e) => setPassword(e.target.value)}
           style={{ display: 'block', width: '100%', marginBottom: '1rem', padding: '0.5rem' }}
         />
-        <button onClick={() => handleAuth(true)} disabled={loading} style={{ marginRight: '1rem' }}>
+        <button type="button" onClick={() => handleAuth(true)} disabled={loading} style={{ marginRight: '1rem' }}>
           Login
         </button>
-        <button onClick={() => handleAuth(false)} disabled={loading}>
+        <button type="button" onClick={() => handleAuth(false)} disabled={loading}>
           Register
         </button>
       </div>
@@ -107,7 +171,9 @@ export default function App() {
     <div style={{ padding: '2rem', fontFamily: 'sans-serif', maxWidth: '600px', margin: 'auto' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h2>Dashboard</h2>
-        <button onClick={handleLogout}>Logout</button>
+        <button type="button" onClick={handleLogout}>
+          Logout
+        </button>
       </div>
 
       {summary && (
@@ -117,6 +183,9 @@ export default function App() {
           <p><strong>Net Balance:</strong> €{summary.net_balance}</p>
         </div>
       )}
+
+      {/* --- Expense Chart --- */}
+      <ExpenseChart transactions={transactions} />
 
       <h3>Add New Transaction</h3>
       <form onSubmit={handleAddTransaction} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -132,6 +201,32 @@ export default function App() {
           <option value="EXPENSE">Expense</option>
           <option value="INCOME">Income</option>
         </select>
+
+        {/* --- Dyanmic Category Dropdown --- */}
+        <select value={isCreatingCategory ? 'NEW' : categoryId} onChange={handleCategorySelect} required>
+          {categories.map((cat) => (
+            <option key={cat.id} value={cat.id}>
+              {cat.name}
+            </option>
+          ))}
+          <option value="NEW">+ Add Custom Category...</option>
+        </select>
+
+        {/* --- Inline Creation Input (Only appears when "+ Add Custom Category..." is selected) --- */}
+        {isCreatingCategory && (
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <input
+              type="text"
+              placeholder="New Category Name (e.g., Gym)"
+              value={newCategoryName}
+              onChange={(e) => setNewCategoryName(e.target.value)}
+              style={{ flex: 1 }}
+            />
+            <button type="button" onClick={handleCreateCategory}>
+              Save Category
+            </button>
+          </div>
+        )}
         <input
           type="text"
           placeholder="Description"
@@ -141,6 +236,50 @@ export default function App() {
         />
         <button type="submit">Submit Transaction</button>
       </form>
+
+      {/* --- Transaction History --- */}
+      <h3 style={{ marginTop: '2rem' }}>Transaction History</h3>
+      <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+        <thead>
+          <tr style={{ borderBottom: '2px solid #ccc' }}>
+            <th style={{ padding: '8px' }}>Date</th>
+            <th style={{ padding: '8px' }}>Description</th>
+            <th style={{ padding: '8px' }}>Type</th>
+            <th style={{ padding: '8px' }}>Amount</th>
+            <th style={{ padding: '8px' }}>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {transactions.map((t) => (
+            <tr key={t.id} style={{ borderBottom: '1px solid #eee' }}>
+              <td style={{ padding: '8px' }}>{t.date}</td>
+              <td style={{ padding: '8px' }}>{t.description}</td>
+              <td style={{ padding: '8px', color: t.type === 'INCOME' ? 'green' : 'red' }}>
+                {t.type}
+              </td>
+              <td style={{ padding: '8px' }}>
+                €{Number.parseFloat(t.amount).toFixed(2)}
+              </td>
+              <td style={{ padding: '8px' }}>
+                <button 
+                  type="button"
+                  onClick={() => handleDeleteTransaction(t.id)}
+                  style={{ 
+                    color: 'white', 
+                    backgroundColor: '#dc3545', 
+                    border: 'none', 
+                    padding: '4px 8px', 
+                    borderRadius: '4px',
+                    cursor: 'pointer' 
+                  }}
+                >
+                  Delete
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

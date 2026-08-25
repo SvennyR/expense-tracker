@@ -9,7 +9,13 @@ from flask_wtf.csrf import CSRFProtect
 
 load_dotenv('keys.env')  # Load environment variables .env file
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": "http://localhost:5173"}})  #restricting CORS from frontend
+CORS(app, resources={r"/*": {
+    "origins": ["http://localhost:5173", "http://127.0.0.1:5173"],
+    "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    "allow_headers": ["Content-Type", "Authorization"]  #restricting CORS from frontend
+    }})
+
+app.config['WTF_CSRF_ENABLED'] = False
 csrf = CSRFProtect(app)
 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://devuser:devpassword@localhost:5432/expense_tracker'
@@ -19,7 +25,16 @@ app.config['JWT_SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY')
 DEBUG_MODE = os.environ.get('FLASK_DEBUG', 'False').lower() in ('true', '1', 't')
 jwt = JWTManager(app)
 
+# --- Database Initialization / Auto-Seeding ---
+def init_db():
+    with app.app_context():
+        db.create_all()
+        if not Category.query.first():
+            db.session.add(Category(name='General'))
+            db.session.commit()
+
 db.init_app(app)
+init_db()
 
 # --- Category Routes ---
 
@@ -49,10 +64,13 @@ def get_transactions():
     transactions = Transaction.query.filter_by(user_id=int(current_user_id)).all()
     output = []
     for t in transactions:
+        cat = Category.query.get(t.category_id)
+        cat_name = cat.name if cat else 'Uncategorized'
         output.append({
             'id': t.id,
             'user_id': t.user_id,
             'category_id': t.category_id,
+            'category_name': cat_name,
             'amount': str(t.amount),
             'type': t.type,
             'date': str(t.date),
@@ -82,6 +100,19 @@ def add_transaction():
     db.session.add(new_tx)
     db.session.commit()
     return jsonify({'message': 'Transaction created', 'id': new_tx.id}), 201
+
+@app.route('/transactions/<int:tx_id>', methods=['DELETE'])
+@jwt_required()
+def delete_transaction(tx_id):
+    current_user_id = get_jwt_identity()
+    transaction = Transaction.query.filter_by(id=tx_id, user_id=int(current_user_id)).first()
+    
+    if not transaction:
+        return jsonify({'error': 'Transaction not found or unauthorized'}), 404
+
+    db.session.delete(transaction)
+    db.session.commit()
+    return jsonify({'message': 'Transaction deleted'}), 200
 
 
 # --- Summary Route ---
