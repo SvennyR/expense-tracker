@@ -115,6 +115,28 @@ def delete_transaction(tx_id):
     return jsonify({'message': 'Transaction deleted'}), 200
 
 
+@app.route('/transactions/<int:tx_id>', methods=['PUT'])
+@jwt_required()
+def update_transaction(tx_id):
+    current_user_id = get_jwt_identity()
+    tx = db.session.get(Transaction, tx_id)
+    
+    if not tx or tx.user_id != int(current_user_id):
+        return jsonify({'error': 'Transaction not found'}), 404
+        
+    data = request.get_json()
+    
+    tx.amount = data.get('amount', tx.amount)
+    tx.type = data.get('type', tx.type)
+    tx.category_id = data.get('category_id', tx.category_id)
+    tx.description = data.get('description', tx.description)
+    
+    if hasattr(tx, 'currency'):
+        tx.currency = data.get('currency', getattr(tx, 'currency', 'EUR'))
+    
+    db.session.commit()
+    return jsonify({'message': 'Transaction updated successfully'}), 200
+
 # --- Summary Route ---
 
 @app.route('/summary', methods=['GET'])
@@ -122,6 +144,7 @@ def delete_transaction(tx_id):
 def get_summary():
     current_user_id = get_jwt_identity()
     transactions = Transaction.query.filter_by(user_id=int(current_user_id)).all()
+    user = User.query.get(int(current_user_id))
 
     total_income = sum(float(t.amount) for t in transactions if t.type == 'INCOME')
     total_expense = sum(float(t.amount) for t in transactions if t.type == 'EXPENSE')
@@ -137,7 +160,8 @@ def get_summary():
         'total_income': round(total_income, 2),
         'total_expense': round(total_expense, 2),
         'net_balance': round(net_balance, 2),
-        'category_breakdown': category_breakdown
+        'category_breakdown': category_breakdown,
+        "currency": user.currency or 'EUR'
     }), 200
 
 # --- Auth Routes ---
@@ -172,6 +196,22 @@ def login():
     access_token = create_access_token(identity=str(user.id))
     return jsonify({'access_token': access_token}), 200
 
+@app.route('/user/currency', methods=['PUT'])
+@jwt_required()
+def update_currency():
+    current_user_id = get_jwt_identity()
+    user = db.session.get(User, int(current_user_id))
+    
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+        
+    data = request.get_json()
+    new_currency = data.get('currency', 'EUR')
+    
+    user.currency = new_currency
+    db.session.commit()
+    
+    return jsonify({'message': 'Currency updated', 'currency': user.currency}), 200
 # ALWAYS LEAVE THIS AT THE VERY BOTTOM
 if __name__ == '__main__':
     app.run(debug=DEBUG_MODE)

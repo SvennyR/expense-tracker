@@ -199,3 +199,8 @@ td {
 tr:last-child td {
   border-bottom: none;
 }
+
+select option {
+  background-color: #1e1e2e; /* Match your app card background */
+  color: #ffffff;
+}

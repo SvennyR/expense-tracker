@@ -10,6 +10,7 @@ class User(db.Model):
     password_hash = db.Column(db.String(255), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     transactions = db.relationship('Transaction', backref='user', lazy=True)
+    currency = db.Column(db.String(10), default='EUR') # Default currency
 
 class Category(db.Model):
     __tablename__ = 'categories'
@@ -27,3 +28,4 @@ class Transaction(db.Model):
     type = db.Column(db.String(10), nullable=False)  # 'INCOME' or 'EXPENSE'
     date = db.Column(db.Date, nullable=False)
     description = db.Column(db.String(255))
+    currency = db.Column(db.String(3), default='EUR')
