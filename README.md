@@ -26,6 +26,9 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 # Install dependencies
 pip install -r requirements.txt
 
+# Run venv enviroment
+.\venv\Scripts\Activate.ps1
+
 # Run database migrations / start application
 python app.py
 ```
