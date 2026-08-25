@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import API from './api';
 import ExpenseChart from './ExpenseChart';
+import { LogOut, PlusCircle, Trash2, LogIn, UserPlus, CheckCircle } from 'lucide-react';
 
 export default function App() {
   const [token, setToken] = useState(localStorage.getItem('token') || '');
@@ -138,148 +139,193 @@ const handleCreateCategory = async () => {
     setSummary(null);
   };
 
-  if (!token) {
+if (!token) {
     return (
-      <div style={{ padding: '2rem', fontFamily: 'sans-serif', maxWidth: '400px', margin: 'auto' }}>
-        <h2>Financial Tracker</h2>
-        {error && <p style={{ color: 'red' }}>{error}</p>}
-        <input
-          type="text"
-          placeholder="Username"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          style={{ display: 'block', width: '100%', marginBottom: '1rem', padding: '0.5rem' }}
-        />
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          style={{ display: 'block', width: '100%', marginBottom: '1rem', padding: '0.5rem' }}
-        />
-        <button type="button" onClick={() => handleAuth(true)} disabled={loading} style={{ marginRight: '1rem' }}>
-          Login
-        </button>
-        <button type="button" onClick={() => handleAuth(false)} disabled={loading}>
-          Register
-        </button>
+      <div className="dark app-container" style={{ maxWidth: '400px', marginTop: '4rem' }}>
+        <div className="card">
+          <h2>Financial Tracker</h2>
+          {error && <p style={{ color: 'var(--destructive)', marginBottom: '1rem' }}>{error}</p>}
+          <input
+            type="text"
+            placeholder="Username"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            style={{ marginBottom: '1rem' }}
+          />
+          <input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            style={{ marginBottom: '1.5rem' }}
+          />
+          <div style={{ display: 'flex', gap: '0.75rem' }}>
+            <button
+              type="button"
+              onClick={() => handleAuth(true)}
+              disabled={loading}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', flex: 1 }}
+            >
+              <LogIn size={16} /> Login
+            </button>
+            <button
+              type="button"
+              className="btn-danger"
+              onClick={() => handleAuth(false)}
+              disabled={loading}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', flex: 1 }}
+            >
+              <UserPlus size={16} /> Register
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div style={{ padding: '2rem', fontFamily: 'sans-serif', maxWidth: '600px', margin: 'auto' }}>
+    <div className="dark app-container">
+      {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h2>Dashboard</h2>
-        <button type="button" onClick={handleLogout}>
-          Logout
+        <h2>Financial Dashboard</h2>
+        <button
+          type="button"
+          className="btn-danger"
+          onClick={handleLogout}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
+        >
+          <LogOut size={16} /> Logout
         </button>
       </div>
 
+      {/* Summary Card */}
       {summary && (
-        <div style={{ background: '#f4f4f4', padding: '1rem', borderRadius: '8px', marginBottom: '2rem' }}>
-          <p><strong>Total Income:</strong> €{summary.total_income}</p>
-          <p><strong>Total Expense:</strong> €{summary.total_expense}</p>
-          <p><strong>Net Balance:</strong> €{summary.net_balance}</p>
+        <div className="card summary-grid">
+          <div className="summary-item">
+            <span>Total Income</span>
+            <strong style={{ color: 'var(--success)' }}>€{summary.total_income}</strong>
+          </div>
+          <div className="summary-item">
+            <span>Total Expense</span>
+            <strong style={{ color: 'var(--danger)' }}>- €{summary.total_expense}</strong>
+          </div>
+          <div className="summary-item">
+            <span>Net Balance</span>
+            <strong>€{summary.net_balance}</strong>
+          </div>
         </div>
       )}
 
-      {/* --- Expense Chart --- */}
-      <ExpenseChart transactions={transactions} />
+      {/* Chart Card */}
+      <div className="card">
+        <h3>Expense Breakdown</h3>
+        <ExpenseChart transactions={transactions} />
+      </div>
 
-      <h3>Add New Transaction</h3>
-      <form onSubmit={handleAddTransaction} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-        <input
-          type="number"
-          step="0.01"
-          placeholder="Amount"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-          required
-        />
-        <select value={type} onChange={(e) => setType(e.target.value)}>
-          <option value="EXPENSE">Expense</option>
-          <option value="INCOME">Income</option>
-        </select>
+      {/* Add Transaction Card */}
+      <div className="card">
+        <h3>Add New Transaction</h3>
+        <form onSubmit={handleAddTransaction} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          <input
+            type="number"
+            step="0.01"
+            placeholder="Amount"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            required
+          />
 
-        {/* --- Dyanmic Category Dropdown --- */}
-        <select value={isCreatingCategory ? 'NEW' : categoryId} onChange={handleCategorySelect} required>
-          {categories.map((cat) => (
-            <option key={cat.id} value={cat.id}>
-              {cat.name}
-            </option>
-          ))}
-          <option value="NEW">+ Add Custom Category...</option>
-        </select>
+          <select value={type} onChange={(e) => setType(e.target.value)}>
+            <option value="EXPENSE">Expense</option>
+            <option value="INCOME">Income</option>
+          </select>
 
-        {/* --- Inline Creation Input (Only appears when "+ Add Custom Category..." is selected) --- */}
-        {isCreatingCategory && (
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <input
-              type="text"
-              placeholder="New Category Name (e.g., Gym)"
-              value={newCategoryName}
-              onChange={(e) => setNewCategoryName(e.target.value)}
-              style={{ flex: 1 }}
-            />
-            <button type="button" onClick={handleCreateCategory}>
-              Save Category
-            </button>
-          </div>
-        )}
-        <input
-          type="text"
-          placeholder="Description"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          required
-        />
-        <button type="submit">Submit Transaction</button>
-      </form>
+          <select value={isCreatingCategory ? 'NEW' : categoryId} onChange={handleCategorySelect} required>
+            {categories.map((cat) => (
+              <option key={cat.id} value={cat.id}>
+                {cat.name}
+              </option>
+            ))}
+            <option value="NEW">+ Add Custom Category...</option>
+          </select>
 
-      {/* --- Transaction History --- */}
-      <h3 style={{ marginTop: '2rem' }}>Transaction History</h3>
-      <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-        <thead>
-          <tr style={{ borderBottom: '2px solid #ccc' }}>
-            <th style={{ padding: '8px' }}>Date</th>
-            <th style={{ padding: '8px' }}>Description</th>
-            <th style={{ padding: '8px' }}>Type</th>
-            <th style={{ padding: '8px' }}>Amount</th>
-            <th style={{ padding: '8px' }}>Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          {transactions.map((t) => (
-            <tr key={t.id} style={{ borderBottom: '1px solid #eee' }}>
-              <td style={{ padding: '8px' }}>{t.date}</td>
-              <td style={{ padding: '8px' }}>{t.description}</td>
-              <td style={{ padding: '8px', color: t.type === 'INCOME' ? 'green' : 'red' }}>
-                {t.type}
-              </td>
-              <td style={{ padding: '8px' }}>
-                €{Number.parseFloat(t.amount).toFixed(2)}
-              </td>
-              <td style={{ padding: '8px' }}>
-                <button 
-                  type="button"
-                  onClick={() => handleDeleteTransaction(t.id)}
-                  style={{ 
-                    color: 'white', 
-                    backgroundColor: '#dc3545', 
-                    border: 'none', 
-                    padding: '4px 8px', 
-                    borderRadius: '4px',
-                    cursor: 'pointer' 
-                  }}
-                >
-                  Delete
-                </button>
-              </td>
+          {isCreatingCategory && (
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <input
+                type="text"
+                placeholder="New Category Name"
+                value={newCategoryName}
+                onChange={(e) => setNewCategoryName(e.target.value)}
+              />
+              <button
+                type="button"
+                onClick={handleCreateCategory}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', whiteSpace: 'nowrap' }}
+              >
+                <CheckCircle size={16} /> Save Category
+              </button>
+            </div>
+          )}
+
+          <input
+            type="text"
+            placeholder="Description"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            required
+          />
+          <button
+            type="submit"
+            style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
+          >
+            <PlusCircle size={16} /> Submit Transaction
+          </button>
+        </form>
+      </div>
+
+      {/* History Card */}
+      <div className="card">
+        <h3>Transaction History</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Description</th>
+              <th>Type</th>
+              <th>Amount</th>
+              <th>Action</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {transactions.map((t) => (
+              <tr key={t.id}>
+                <td>{t.date}</td>
+                <td>{t.description}</td>
+                <td style={{ color: t.type === 'INCOME' ? 'var(--success)' : 'var(--danger)', fontWeight: 600 }}>
+                  {t.type}
+                </td>
+                <td>€{Number.parseFloat(t.amount).toFixed(2)}</td>
+                <td>
+                  <button
+                    type="button"
+                    className="btn-danger"
+                    onClick={() => handleDeleteTransaction(t.id)}
+                    style={{
+                      padding: '0.25rem 0.5rem',
+                      fontSize: '0.85rem',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.25rem',
+                    }}
+                  >
+                    <Trash2 size={14} /> Delete
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
