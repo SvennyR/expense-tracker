@@ -10,9 +10,25 @@ A full-stack expense tracking App for monthly budget managment
 ## Local Setup
 
 ### Prerequisites
-* Python 3.10+
-* Node.js 18+
+* Python 3.11+
+* Node.js 20+
 * PostgreSQL databaser server running locally
+
+### Quick Start with Docker
+
+* **Prerequisites** Docker Desktop installed and running.
+
+```bash
+# Clone repository
+git clone https://github.com/SvennyR/expense-tracker.git
+cd expense-tracker
+
+# Build and start all services (Frontend, Backend, PostgreSQL)
+docker compose up --build
+```
+> **Access Points:**
+> * **Frontend:** `http://localhost:5173`
+> * **Backend API:** `http://localhost:5000
 
 ### Backend Setup (Flask) for personal use or adjustment
 ```bash

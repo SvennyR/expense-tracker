@@ -18,10 +18,10 @@ CORS(app, resources={r"/*": {
 app.config['WTF_CSRF_ENABLED'] = False
 csrf = CSRFProtect(app)
 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://devuser:devpassword@localhost:5432/expense_tracker'
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'postgresql://devuser:devpassword@postgres:5432/expense_tracker')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY')
-app.config['JWT_SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY')
+app.config['JWT_SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY', 'super-secret-key')  # Change this before deploying
 DEBUG_MODE = os.environ.get('FLASK_DEBUG', 'False').lower() in ('true', '1', 't')
 jwt = JWTManager(app)
 
@@ -34,7 +34,7 @@ def init_db():
             db.session.commit()
 
 db.init_app(app)
-init_db()
+jwt = JWTManager(app)
 
 # --- Category Routes ---
 
@@ -214,4 +214,5 @@ def update_currency():
     return jsonify({'message': 'Currency updated', 'currency': user.currency}), 200
 # ALWAYS LEAVE THIS AT THE VERY BOTTOM
 if __name__ == '__main__':
-    app.run(debug=DEBUG_MODE)
+    init_db()  # Ensure the database is initialized before running the app
+    app.run(host='0.0.0.0', debug=DEBUG_MODE)

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import API from './api';
 import ExpenseChart from './ExpenseChart';
 import { LogOut, PlusCircle, Trash2, LogIn, UserPlus, CheckCircle, Pencil } from 'lucide-react';
+import MonthlyChart from './MonthlyChart';
 
 export default function App() {
   const [token, setToken] = useState(localStorage.getItem('token') || '');
@@ -301,6 +302,12 @@ if (!token) {
       </button>
       </form>
       </div>
+
+      {/* Monthly Overview Chart */}
+      <MonthlyChart 
+      transactions={transactions} 
+      currencySymbol={getCurrencySymbol(currency)} />
+      
       {/* History Card */}
       <div className="card">
       <h3>Transaction History</h3>
@@ -341,8 +348,7 @@ if (!token) {
       display: 'inline-flex',
       alignItems: 'center',
       gap: '0.25rem',
-      marginRight: '0.5rem',
-      paddingLeft: '0.5rem',
+      marginRight: '0.5rem'
       }}>
       <Pencil size={14} /> Edit
       </button>

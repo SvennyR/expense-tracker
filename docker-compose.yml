@@ -12,5 +12,24 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
+  backend:
+    build: .
+    container_name: expense_tracker_backend
+    restart: always
+    ports:
+      - "5000:5000"
+    environment:
+      DATABASE_URL: postgresql://devuser:devpassword@postgres:5432/expense_tracker
+    depends_on:
+      - postgres
+
+  frontend:
+    build: ./frontend
+    container_name: expense_tracker_frontend
+    restart: always
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
 volumes:
   postgres_data:
