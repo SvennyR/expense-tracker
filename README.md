@@ -28,7 +28,7 @@ docker compose up --build
 ```
 > **Access Points:**
 > * **Frontend:** `http://localhost:5173`
-> * **Backend API:** `http://localhost:5000
+> * **Backend API:** `http://localhost:5000`
 
 ### Backend Setup (Flask) for personal use or adjustment
 ```bash
